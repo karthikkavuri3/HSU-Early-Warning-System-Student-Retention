@@ -18,8 +18,6 @@ This repository contains two tightly connected parts:
   - Full early‑warning platform for **students**, **advisors**, and **admins**
   - Uses CSV exports / model outputs to drive interactive dashboards
   - Fully role‑based, production‑style UI with 10 pages
-- **Streamlit Web Application (`LIve Link`):**
-- https://hsu-early-warning-system-student-retention-88dlnqbmp2cvxnnjcvy.streamlit.app/
 
 This README documents **both** the ML pipeline and the Streamlit system, including
 installation, data, architecture, pages, credentials, and deployment.
