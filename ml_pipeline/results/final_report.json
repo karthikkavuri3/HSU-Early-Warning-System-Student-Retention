@@ -1,0 +1,53 @@
+{
+  "execution_date": "2025-11-08T13:28:12.477202",
+  "dataset_size": 10000,
+  "num_features": 69,
+  "train_size": 10816,
+  "val_size": 1500,
+  "test_size": 1500,
+  "baseline_model": {
+    "name": "Logistic Regression",
+    "metrics": {
+      "train_accuracy": 0.9993528106508875,
+      "val_accuracy": 0.9973333333333333,
+      "val_precision": 0.9884057971014493,
+      "val_recall": 1.0,
+      "val_f1": 0.9941690962099126,
+      "val_auc": 0.9989069351422881
+    }
+  },
+  "best_model": {
+    "name": "Random Forest",
+    "val_metrics": {
+      "accuracy": 0.924,
+      "precision": 0.9829787234042553,
+      "recall": 0.6774193548387096,
+      "f1": 0.8020833333333334,
+      "auc": 0.9286269131797813
+    },
+    "test_metrics": {
+      "accuracy": 0.9433333333333334,
+      "precision": 0.9705882352941176,
+      "recall": 0.7741935483870968,
+      "f1": 0.8613376835236541,
+      "auc": 0.9320402106174046
+    }
+  },
+  "all_models": {
+    "random_forest": {
+      "accuracy": 0.924,
+      "precision": 0.9829787234042553,
+      "recall": 0.6774193548387096,
+      "f1": 0.8020833333333334,
+      "auc": 0.9286269131797813
+    }
+  },
+  "ensemble_models": {
+    "note": "Ensembles not used - only Random Forest model"
+  },
+  "predictions": {
+    "high_risk": 271,
+    "medium_risk": 27,
+    "low_risk": 1202
+  }
+}

@@ -1,0 +1,43 @@
+# HSU Early Warning System - ML Pipeline Requirements
+# =====================================================
+# Install with: pip install -r requirements_ml.txt
+
+# Core Data Science
+pandas>=1.5.0
+numpy>=1.23.0
+
+# Machine Learning Core
+scikit-learn>=1.2.0
+
+# Advanced ML Models
+lightgbm>=3.3.5
+xgboost>=1.7.0
+catboost>=1.2.0
+
+# Imbalanced Learning
+imbalanced-learn>=0.10.0
+
+# Model Explainability
+shap>=0.42.0
+
+# Visualization
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Model Persistence
+joblib>=1.2.0
+
+# Progress Bars (Optional but recommended)
+tqdm>=4.65.0
+
+# Jupyter Support (Optional - for notebook analysis)
+jupyter>=1.0.0
+ipython>=8.0.0
+
+# Data Generation (if needed)
+faker>=18.0.0
+
+# Additional Utilities
+python-dateutil>=2.8.0
+pytz>=2023.0
+
