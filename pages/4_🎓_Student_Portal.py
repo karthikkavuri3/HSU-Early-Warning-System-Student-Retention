@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import sys
 from pathlib import Path
+import sqlite3
+from datetime import datetime
 
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.auth import get_student_id, get_current_user
@@ -85,9 +87,10 @@ try:
     
     student = student_df.iloc[0]
     
-    # Get risk score safely
+    # Student-specific slices
     risk_df = risk_scores[risk_scores['StudentID'] == student_id]
     student_risk = risk_df.iloc[0] if len(risk_df) > 0 else None
+    student_logins = logins[logins['StudentID'] == student_id]
     
 except Exception as e:
     st.error(f"Error loading student data: {e}")
@@ -364,6 +367,93 @@ with col4:
 
 st.divider()
 
+# -----------------------------------------------------------------
+# Student snapshot cards (Upcoming Appointments, Achievements, Support)
+# -----------------------------------------------------------------
+
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+    # Upcoming appointments / recent counseling
+    st.markdown("#### 📅 Upcoming Appointments")
+    upcoming_items = []
+
+    # Recent counseling visits from counseling.csv
+    try:
+        student_counseling_overview = counseling[counseling['StudentID'] == student_id].copy()
+        if not student_counseling_overview.empty and 'VisitDate' in student_counseling_overview.columns:
+            student_counseling_overview['VisitDate'] = pd.to_datetime(student_counseling_overview['VisitDate'])
+            recent_visits = student_counseling_overview.sort_values('VisitDate', ascending=False).head(2)
+            for _, visit in recent_visits.iterrows():
+                upcoming_items.append(
+                    f"**{visit['ConcernType']} Counseling**  \\n+📅 {visit['VisitDate'].date()} • Counselor: {visit['CounselorName']}"
+                )
+    except Exception:
+        pass
+
+    # Appointment requests from interventions table
+    try:
+        conn = sqlite3.connect('database/hsu_database.db')
+        query = """
+            SELECT title, scheduled_date, status
+            FROM interventions
+            WHERE student_id = ? AND title LIKE '%Appointment Request%'
+            ORDER BY datetime(scheduled_date) ASC
+            LIMIT 2
+        """
+        appt_df = pd.read_sql_query(query, conn, params=(student_id,))
+        conn.close()
+        if not appt_df.empty:
+            for _, row in appt_df.iterrows():
+                scheduled = row['scheduled_date'] if pd.notna(row['scheduled_date']) else "TBD"
+                upcoming_items.append(
+                    f"**{row['title']}**  \\n+📅 {scheduled} • Status: {row['status']}"
+                )
+    except Exception:
+        pass
+
+    if upcoming_items:
+        for item in upcoming_items:
+            st.info(item)
+    else:
+        st.info("No upcoming appointments found. Use the **Appointments** tab to request one.")
+
+    st.markdown("---")
+
+    # Recent achievements snapshot
+    st.markdown("#### 🏆 Recent Achievements")
+    achievements = []
+
+    if current_gpa >= 3.5:
+        achievements.append("✅ **Dean's List** – GPA 3.5 or higher.")
+    if total_credits >= 30:
+        achievements.append("✅ **25% Degree Milestone** – at least 30 credits completed.")
+    if len(student_logins) >= 100:
+        achievements.append("✅ **Active Engagement** – 100+ LMS logins.")
+
+    if achievements:
+        for ach in achievements:
+            st.success(ach)
+    else:
+        st.info("Keep going! Your next milestones are 30 credits and a GPA of 3.5.")
+
+with right_col:
+    st.markdown("<div id='support'></div>", unsafe_allow_html=True)
+    st.markdown("#### 💬 Need Support?")
+    st.write("We're here to help you succeed. Connect with your advisor or explore campus resources.")
+
+    if st.button("📩 Message My Advisor", use_container_width=True):
+        st.info("Email **advisor@hsu.edu**")
+
+    if st.button("📚 Browse Academic Resources", use_container_width=True):
+        st.info("See the **Resources** tab for tutoring, writing center, and support services.")
+
+    if st.button("💰 Financial Aid Help", use_container_width=True):
+        st.info("Email **financialaid@hsu.edu** or visit the Financial Aid Office for assistance.")
+
+    if st.button("💚 Wellness Resources", use_container_width=True):
+        st.info("Contact Counseling Services in the Student Center for confidential support.")
+
 # Main Content Tabs
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📚 My Courses", "📊 Academic Progress", "🎯 Goals & Milestones", 
@@ -529,7 +619,6 @@ with tab3:
         if total_credits >= 30:
             st.success("🎓 25% Degree Milestone Reached")
         
-        student_logins = logins[logins['StudentID'] == student_id]
         if len(student_logins) > 100:
             st.success("💻 Active Learner - 100+ LMS Logins")
         

@@ -111,6 +111,103 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
+# Load data (moved earlier so quick-action buttons have access to df / filtered_df)
+with st.spinner("Loading student data..."):
+    students = load_students()
+    risk_scores = load_risk_scores()
+    enrollments = load_enrollments()
+    grades = load_grades()
+    counseling = load_counseling()
+    attendance_data = load_attendance()
+    logins = load_logins()
+
+# Merge data
+df = students.merge(risk_scores, on='StudentID', how='left')
+
+# Calculate GPA for each student from grades
+gpa_dict = {}
+for student_id in df['StudentID']:
+    student_enr = enrollments[enrollments['StudentID'] == student_id]
+    student_grd = grades[grades['EnrollmentID'].isin(student_enr['EnrollmentID'])]
+    if len(student_grd) > 0:
+        gpa = student_grd['GradePercentage'].mean() / 25  # Convert to 4.0 scale
+        gpa_dict[student_id] = gpa
+    else:
+        gpa_dict[student_id] = 3.0  # Default
+
+df['CalculatedGPA'] = df['StudentID'].map(gpa_dict)
+
+# Add search functionality
+st.markdown("### 🔍 Search Students")
+search_term = st.text_input("Search by name or student ID", placeholder="Enter name or ID...")
+
+# Sidebar filters
+st.sidebar.header("🔍 Filters")
+
+# Risk level filter
+risk_levels = ['Critical', 'High', 'Medium', 'Low']
+selected_risks = st.sidebar.multiselect(
+    "Risk Level",
+    options=risk_levels,
+    default=['Critical', 'High']
+)
+
+# Classification filter removed major since it doesn't exist in students table
+
+# Classification filter
+if 'Classification' in df.columns:
+    classifications = ['All'] + sorted(df['Classification'].unique().tolist())
+    selected_class = st.sidebar.selectbox("Classification", classifications)
+else:
+    selected_class = 'All'
+
+# First-Gen filter
+show_first_gen = st.sidebar.checkbox("First-Generation Only", value=False)
+
+# Sort options
+sort_by = st.sidebar.selectbox(
+    "Sort By",
+    ["Risk Score (High to Low)", "Risk Score (Low to High)", "GPA (Low to High)", "GPA (High to Low)", "Name (A-Z)"]
+)
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.rerun()
+
+# Apply filters
+filtered_df = df.copy()
+
+# Apply search
+if search_term:
+    search_term_lower = search_term.lower()
+    filtered_df = filtered_df[
+        filtered_df['FirstName'].str.lower().str.contains(search_term_lower, na=False) |
+        filtered_df['LastName'].str.lower().str.contains(search_term_lower, na=False) |
+        filtered_df['StudentID'].astype(str).str.contains(search_term, na=False)
+    ]
+
+if selected_risks:
+    filtered_df = filtered_df[filtered_df['RiskCategory'].isin(selected_risks)]
+
+if selected_class != 'All':
+    filtered_df = filtered_df[filtered_df['Classification'] == selected_class]
+
+if show_first_gen and 'FirstGenerationStudent' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['FirstGenerationStudent'] == True]
+
+# Apply sorting
+if sort_by == "Risk Score (High to Low)":
+    filtered_df = filtered_df.sort_values('OverallRiskScore', ascending=False)
+elif sort_by == "Risk Score (Low to High)":
+    filtered_df = filtered_df.sort_values('OverallRiskScore', ascending=True)
+elif sort_by == "GPA (Low to High)":
+    filtered_df = filtered_df.sort_values('CalculatedGPA', ascending=True)
+elif sort_by == "GPA (High to Low)":
+    filtered_df = filtered_df.sort_values('CalculatedGPA', ascending=False)
+elif sort_by == "Name (A-Z)":
+    filtered_df = filtered_df.sort_values('LastName', ascending=True)
+
 # Quick Action Buttons
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -209,103 +306,6 @@ with col4:
         st.switch_page("app.py")
 
 st.divider()
-
-# Load data
-with st.spinner("Loading student data..."):
-    students = load_students()
-    risk_scores = load_risk_scores()
-    enrollments = load_enrollments()
-    grades = load_grades()
-    counseling = load_counseling()
-    attendance_data = load_attendance()
-    logins = load_logins()  # Add logins here
-
-# Merge data
-df = students.merge(risk_scores, on='StudentID', how='left')
-
-# Calculate GPA for each student from grades
-gpa_dict = {}
-for student_id in df['StudentID']:
-    student_enr = enrollments[enrollments['StudentID'] == student_id]
-    student_grd = grades[grades['EnrollmentID'].isin(student_enr['EnrollmentID'])]
-    if len(student_grd) > 0:
-        gpa = student_grd['GradePercentage'].mean() / 25  # Convert to 4.0 scale
-        gpa_dict[student_id] = gpa
-    else:
-        gpa_dict[student_id] = 3.0  # Default
-
-df['CalculatedGPA'] = df['StudentID'].map(gpa_dict)
-
-# Add search functionality
-st.markdown("### 🔍 Search Students")
-search_term = st.text_input("Search by name or student ID", placeholder="Enter name or ID...")
-
-# Sidebar filters
-st.sidebar.header("🔍 Filters")
-
-# Risk level filter
-risk_levels = ['Critical', 'High', 'Medium', 'Low']
-selected_risks = st.sidebar.multiselect(
-    "Risk Level",
-    options=risk_levels,
-    default=['Critical', 'High']
-)
-
-# Classification filter removed major since it doesn't exist in students table
-
-# Classification filter
-if 'Classification' in df.columns:
-    classifications = ['All'] + sorted(df['Classification'].unique().tolist())
-    selected_class = st.sidebar.selectbox("Classification", classifications)
-else:
-    selected_class = 'All'
-
-# First-Gen filter
-show_first_gen = st.sidebar.checkbox("First-Generation Only", value=False)
-
-# Sort options
-sort_by = st.sidebar.selectbox(
-    "Sort By",
-    ["Risk Score (High to Low)", "Risk Score (Low to High)", "GPA (Low to High)", "GPA (High to Low)", "Name (A-Z)"]
-)
-
-st.sidebar.markdown("---")
-if st.sidebar.button("🔄 Refresh Data"):
-    st.cache_data.clear()
-    st.rerun()
-
-# Apply filters
-filtered_df = df.copy()
-
-# Apply search
-if search_term:
-    search_term_lower = search_term.lower()
-    filtered_df = filtered_df[
-        filtered_df['FirstName'].str.lower().str.contains(search_term_lower, na=False) |
-        filtered_df['LastName'].str.lower().str.contains(search_term_lower, na=False) |
-        filtered_df['StudentID'].astype(str).str.contains(search_term, na=False)
-    ]
-
-if selected_risks:
-    filtered_df = filtered_df[filtered_df['RiskCategory'].isin(selected_risks)]
-
-if selected_class != 'All':
-    filtered_df = filtered_df[filtered_df['Classification'] == selected_class]
-
-if show_first_gen and 'FirstGenerationStudent' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['FirstGenerationStudent'] == True]
-
-# Apply sorting
-if sort_by == "Risk Score (High to Low)":
-    filtered_df = filtered_df.sort_values('OverallRiskScore', ascending=False)
-elif sort_by == "Risk Score (Low to High)":
-    filtered_df = filtered_df.sort_values('OverallRiskScore', ascending=True)
-elif sort_by == "GPA (Low to High)":
-    filtered_df = filtered_df.sort_values('CalculatedGPA', ascending=True)
-elif sort_by == "GPA (High to Low)":
-    filtered_df = filtered_df.sort_values('CalculatedGPA', ascending=False)
-elif sort_by == "Name (A-Z)":
-    filtered_df = filtered_df.sort_values('LastName', ascending=True)
 
 # Show Pending Appointment Requests
 st.markdown("### 📅 Pending Appointment Requests")
@@ -536,9 +536,12 @@ else:
                         except Exception as e:
                             st.error(f"Error scheduling meeting: {e}")
                     else:
-                        # CSV mode - show confirmation
+                        # CSV mode - show confirmation with safe defaults to avoid NameError
+                        meeting_date = datetime.now() + timedelta(days=2)
+                        meeting_time = meeting_date.strftime('%I:%M %p')
+                        meeting_method = 'In-person'
                         st.success(f"✅ Would schedule meeting with {student['FirstName']} {student['LastName']}")
-                        st.info(f"📅 {meeting_date} at {meeting_time} via {meeting_method}")
+                        st.info(f"📅 {meeting_date.strftime('%B %d, %Y at %I:%M %p')} via {meeting_method}")
                 
                 if st.button(f"📧 Send Email", key=f"email_{student['StudentID']}"):
                     if DATABASE_MODE:
@@ -728,7 +731,7 @@ with col3:
     """, unsafe_allow_html=True)
 
 with col4:
-    first_gen_count = len(filtered_df[filtered_df['FirstGenerationStudent'] == True])
+    first_gen_count = len(filtered_df[filtered_df['FirstGenerationStudent'] == True]) if 'FirstGenerationStudent' in filtered_df.columns else 0
     st.markdown(f"""
         <div style='background: #DBEAFE; padding: 15px; border-radius: 10px; text-align: center;'>
             <div style='font-size: 2rem; font-weight: bold; color: #1E40AF;'>{first_gen_count}</div>
@@ -748,7 +751,7 @@ with viz_col1:
     risk_dist_data = filtered_df['RiskCategory'].value_counts()
     
     # Calculate percentages
-    total_students = len(filtered_df)
+    total_students = len(filtered_df) if len(filtered_df) > 0 else 1
     risk_percentages = (risk_dist_data / total_students * 100).round(1)
     
     fig_donut = go.Figure(data=[go.Pie(
@@ -981,7 +984,7 @@ with stat_col2:
     """, unsafe_allow_html=True)
 
 with stat_col3:
-    high_risk_pct = len(filtered_df[filtered_df['RiskCategory'].isin(['Critical', 'High'])]) / len(filtered_df) * 100
+    high_risk_pct = (len(filtered_df[filtered_df['RiskCategory'].isin(['Critical', 'High'])]) / len(filtered_df) * 100) if len(filtered_df) > 0 else 0.0
     st.markdown(f"""
         <div style='background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); padding: 20px; border-radius: 12px; color: white; text-align: center;'>
             <div style='font-size: 2rem; font-weight: bold;'>{high_risk_pct:.1f}%</div>
